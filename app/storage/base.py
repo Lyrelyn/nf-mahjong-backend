@@ -69,15 +69,26 @@ def map_match_summary(row) -> dict:
     }
 
 
-def aggregate_player_stats(rows: Sequence, match_seats: dict) -> dict:
-    """从局结果行纯计算玩家场次、局数、胜局与净胜分。"""
+def aggregate_player_stats(rows: Sequence, match_seats: dict,
+                           player_key: Optional[str] = None) -> dict:
+    """从局结果行纯计算玩家场次、局数、胜局与净胜分。
+
+    ``nanfeng`` 的座位每局会轮换，所以它的每局结果按**玩家 key** 记账
+    （``deltasByPlayer`` / ``winnerPlayers``），必须靠 ``player_key`` 取本人那一份；
+    其它玩法仍按座位下标取。
+    """
     matches: set[str] = set()
     hands = wins = total_delta = 0
     for row in rows:
         seat = match_seats[row['match_id']]
         result = json.loads(row['result_json'])
         deltas = result.get('deltas', []) or []
-        if result.get('rulesetId') == 'yaotong':
+        if result.get('rulesetId') == 'nanfeng':
+            if player_key is None:
+                continue
+            amount = (result.get('deltasByPlayer') or {}).get(player_key, 0)
+            won = player_key in (result.get('winnerPlayers') or [])
+        elif result.get('rulesetId') == 'yaotong':
             if not 0 <= seat < len(deltas):
                 continue
             amount = deltas[seat]
@@ -423,12 +434,14 @@ class BaseStorage(ABC):
                     'totalDelta': 0,
                 }
             match_seats = {row['match_id']: row['seat'] for row in rows}
-            return {'playerId': player_id, **self._aggregate_stats(conn, match_seats)}
+            return {'playerId': player_id,
+                    **self._aggregate_stats(conn, match_seats, player_key=player_id)}
 
-    def _aggregate_stats(self, conn, match_seats: dict) -> dict:
+    def _aggregate_stats(self, conn, match_seats: dict,
+                         player_key: Optional[str] = None) -> dict:
         match_ids = list(match_seats)
         if not match_ids:
-            return aggregate_player_stats([], match_seats)
+            return aggregate_player_stats([], match_seats, player_key)
         placeholders = ','.join(':p' for _ in match_ids)
         rows = self._execute(
             conn,
@@ -436,4 +449,4 @@ class BaseStorage(ABC):
             f'WHERE match_id IN ({placeholders})',
             match_ids,
         ).fetchall()
-        return aggregate_player_stats(rows, match_seats)
+        return aggregate_player_stats(rows, match_seats, player_key)

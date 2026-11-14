@@ -32,7 +32,7 @@ from app.api.llm_relay import (
     router as llm_relay_router,
 )
 from app.auth.wakudemo import WakuDemoOAuthConfig
-from app.game.room import start_room_watchdog
+from app.game.nanfeng_room import start_room_watchdog
 from app.ws.game_ws import router as ws_router
 from app.storage.db import storage
 from app.tts.service import get_tts_service

@@ -15,7 +15,7 @@ from loguru import logger
 from pydantic import BaseModel, Field
 
 from app.api.deps import AuthenticatedUser, require_wakudemo_login
-from app.game.room import room_registry
+from app.game.nanfeng_room import room_registry
 from app.storage.db import storage
 
 router = APIRouter(tags=['moderation'])

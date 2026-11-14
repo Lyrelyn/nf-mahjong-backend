@@ -36,7 +36,7 @@ for _proxy_key in ('NO_PROXY', 'no_proxy'):
 
 # 测试严禁读取开发机真实 TTS YAML/凭据；服务 fixture 使用系统临时缓存。
 from app.tts import config as tts_config
-_test_tts_root = Path(tempfile.gettempdir()) / 'lianhua-test-tts'
+_test_tts_root = Path(tempfile.gettempdir()) / 'nf-test-tts'
 _test_tts_root.mkdir(parents=True, exist_ok=True)
 _test_tts_config = _test_tts_root / 'disabled.yml'
 _test_tts_config.write_text(
@@ -47,7 +47,7 @@ _test_tts_config.write_text(
 tts_config.DEFAULT_CONFIG_FILE = _test_tts_config
 
 from app.main import app
-from app.game.room import room_registry as rooms
+from app.game.nanfeng_room import room_registry as rooms
 
 
 @pytest.fixture(scope='module')
@@ -75,25 +75,6 @@ def fresh_rooms():
     rooms.clear()
     yield
     rooms.clear()
-
-
-@pytest.fixture(autouse=True)
-def stub_avatar_fetch(monkeypatch):
-    """头像获取不触网：按调用次数返回固定 URL，并统计调用次数供断言。
-
-    外部头像 API（api.ruseo.cn）在测试里不可依赖；monkeypatch 掉
-    app.game.avatars.fetch_random_avatar 后，经典房间与血流房间的 join 流程都照常走
-    「首次取图 → 落库 → 复用」逻辑。
-    """
-    from app.game import avatars as avatars_module
-    calls = {'n': 0}
-
-    def _fake_avatar():
-        calls['n'] += 1
-        return f'https://example.com/avatar/fake-{calls["n"]}.jpg'
-
-    monkeypatch.setattr(avatars_module, 'fetch_random_avatar', _fake_avatar)
-    return calls
 
 
 @pytest.fixture(autouse=True)
